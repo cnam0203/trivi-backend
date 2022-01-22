@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'corsheaders', 
     'core.apps.CoreConfig',
 
-
     # Primary Apps
     'dimadb',
 ]
