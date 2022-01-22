@@ -1,86 +1,27 @@
 from rest_framework import serializers
 from rest_framework_jwt.settings import api_settings
-from .models import Domain, CulturalProduct, Organization, WebActivity, Event, CulturalItem
+from .models import Events, Products, Session, Interaction, ImportInfo
 
-
-class DomainSerializer(serializers.ModelSerializer):
-    def create(self, validated_data):
-        instance = self.Meta.model(**validated_data)
-        instance.save()
-        return instance
-
+class SessionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Domain
-        fields = '__all__'
-
-class OrganizationSerializer(serializers.ModelSerializer):
-    def create(self, validated_data):
-        instance = self.Meta.model(**validated_data)
-        instance.save()
-        return instance
-
+        model = Session
+        fields = ('id', 'visit_id', 'visit_date', 'event_name', 'operating_system', 'device_category', 'device_brand', 'browser', 'page_title', 'page_location')
+        
+class InteractionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Organization
-        fields = '__all__'
-
-class CulturalProductSerializer(serializers.ModelSerializer):
-    domain = serializers.CharField(source='domain.name')
-    organization = serializers.CharField(source='organization.legal_name')
-
-    def create(self, validated_data):
-        instance = self.Meta.model(**validated_data)
-        instance.save()
-        return instance
-
-    class Meta:
-        model = CulturalProduct
-        fields = ('product_id', 'name', 'product_type', 'domain', 'organization', 'created_at')
-        # fields = ('product_id', 'name', 'domain__name', 'organization__name', 'create_at')
-
+        model = Interaction
+        fields = ('id', 'interaction_id', 'session_id', 'visit_date', 'event_name', 'operating_system', 'device_category', 'device_brand', 'browser', 'page_title', 'page_location')
 class EventSerializer(serializers.ModelSerializer):
-    domain = serializers.CharField(source='product.domain.name')
-    name = serializers.CharField(source='product.name')
-    organization = serializers.CharField(source='product.organization.legal_name')
-    domain_id = serializers.CharField(source='product.domain.id')
-    organization_id = serializers.CharField(source='product.organization.id')
-    product_id = serializers.CharField(source='product.product_id')
-    created_at = serializers.DateTimeField(source='product.created_at')
-    slug = serializers.CharField(source='product.slug')
-    description = serializers.CharField(source='product.description')
-    source_url = serializers.CharField(source='product.url')
-    image_url = serializers.CharField(source='product.image_url')
-
     class Meta:
-        model = Event
+        model = Events
+        fields = ('id', 'event_id', 'event_name', 'event_title',
+                  'event_type', 'start_date', 'end_date', 'next_date', 'status')
+class ArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Products
+        fields = ('id', 'product_id', 'product_name',
+                  'product_price', 'product_revenue', 'status')
+class ImportInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ImportInfo
         fields = '__all__'
-
-class ItemSerializer(serializers.ModelSerializer):
-    domain = serializers.CharField(source='product.domain.name')
-    name = serializers.CharField(source='product.name')
-    organization = serializers.CharField(source='product.organization.legal_name')
-    domain_id = serializers.CharField(source='product.domain.id')
-    organization_id = serializers.CharField(source='product.organization.id')
-    product_id = serializers.CharField(source='product.product_id')
-    created_at = serializers.DateTimeField(source='product.created_at')
-    slug = serializers.CharField(source='product.slug')
-    description = serializers.CharField(source='product.description')
-    source_url = serializers.CharField(source='product.url')
-    image_url = serializers.CharField(source='product.image_url')
-
-    class Meta:
-        model = CulturalItem
-        fields = '__all__'
-
-class WebActivitySerializer(serializers.ModelSerializer):
-    activity_type = serializers.CharField(source='activity_type.name')
-
-    def create(self, validated_data):
-        instance = self.Meta.model(**validated_data)
-        instance.save()
-        return instance
-
-    class Meta:
-        model = WebActivity
-        fields = ('id', 'activity_type', 'visitor', 'page_id', 'session', 'browser', 'created_at')
-
-

@@ -1,0 +1,391 @@
+{
+    "event": {
+        "default": {
+            "model_name": "events",
+            "is_reformat": false,
+            "listAttributes": {
+                "event_id": {
+                    "type": "string",
+                    "source_name": "id"
+                },
+                "event_title": {
+                    "type": "string",
+                    "source_name": "title"
+                },
+                "event_type": {
+                    "type": "string",
+                    "source_name": "tags[0].slug"
+                },
+                "slug": {
+                    "type": "string",
+                    "source_name": "slug"
+                },
+                "lang": {
+                    "type": "string",
+                    "source_name": "lang"
+                },
+                "start_date": {
+                    "type": "date",
+                    "source_name": "start_date"
+                },
+                "end_date": {
+                    "type": "date",
+                    "source_name": "end_date"
+                },
+                "next_date": {
+                    "type": "date",
+                    "source_name": "next_date"
+                },
+                "count_down": {
+                    "type": "int",
+                    "source_name": "event_dates_count"
+                },
+                "status": {
+                    "type": "string",
+                    "source_name": "status"
+                },
+                "description": {
+                    "type": "string",
+                    "source_name": "description"
+                },
+                "is_public": {
+                    "type": "string",
+                    "source_name": "public"
+                }
+            },
+            "list_foreign_attributes": [
+                {
+                    "foreign_table": "resource",
+                    "connected_table": "eventresource",
+                    "connected_field1": "event_id",
+                    "connected_field2": "resource_id",
+                    "current_table": "events",
+                    "sources": [
+                        {
+                            "listAttributes": {
+                                "resource_url": {
+                                    "type": "string",
+                                    "source_name": "display_image_url"
+                                }, 
+                                "resource_name": {
+                                    "type": "string",
+                                    "default": "display_image"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        },
+                        {
+                            "listAttributes": {
+                                "resource_url": {
+                                    "type": "string",
+                                    "source_name": "photo_url"
+                                }, 
+                                "resource_name": {
+                                    "type": "string",
+                                    "default": "photo"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        },
+                        {
+                            "listAttributes": {
+                                "resource_url": {
+                                    "type": "string",
+                                    "source_name": "extra_large_photo_url"
+                                }, 
+                                "resource_name": {
+                                    "type": "string",
+                                    "default": "extra_large_photo"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        },
+                        {
+                            "listAttributes": {
+                                "resource_url": {
+                                    "type": "string",
+                                    "source_name": "thumbnail_url"
+                                }, 
+                                "resource_name": {
+                                    "type": "string",
+                                    "default": "thumbnail"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        },
+                        {
+                            "listAttributes": {
+                                "resource_url": {
+                                    "type": "string",
+                                    "source_name": "website_url"
+                                }, 
+                                "resource_name": {
+                                    "type": "string",
+                                    "default": "website"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        }
+                    ]
+                }, {
+                    "foreign_table": "geolocation",
+                    "connected_table": "eventlocation",
+                    "connected_field1": "event_id",
+                    "connected_field2": "location_id",
+                    "current_table": "events",
+                    "sources": [
+                        {
+                            "listAttributes": {
+                                "location_id": {
+                                    "type": "string",
+                                    "source_name": "venue.id"
+                                },
+                                "location_name": {
+                                    "type": "string",
+                                    "source_name": "venue.name"
+                                },
+                                "address": {
+                                    "type": "string",
+                                    "source_name": "venue.address"
+                                },
+                                "address2": {
+                                    "type": "string",
+                                    "source_name": "venue.address2"
+                                },
+                                "city": {
+                                    "type": "string",
+                                    "source_name": "venue.city"
+                                },
+                                "state": {
+                                    "type": "string",
+                                    "source_name": "venue.state"
+                                },
+                                "country": {
+                                    "type": "string",
+                                    "default": "Canada"
+                                },
+                                "zip": {
+                                    "type": "string",
+                                    "source_name": "venue.zip"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                                "room": {
+                                    "type": "string",
+                                    "source_name": "room.id"
+                                }
+                            }
+                        }
+                    ]
+                }, {
+                    "foreign_table": "businessentity",
+                    "connected_table": "entityeventrole",
+                    "connected_field1": "event_id",
+                    "connected_field2": "entity_id",
+                    "current_table": "events",
+                    "sources": [
+                        {
+                            "listAttributes": {
+                                "entity_id": {
+                                    "type": "string",
+                                    "source_name": "organization.id"
+                                },
+                                "entity_name": {
+                                    "type": "string",
+                                    "source_name": "organization.name"
+                                },
+                                "slug": {
+                                    "type": "string",
+                                    "source_name": "organization.slug"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                                "role_name": {
+                                    "type": "string",
+                                    "default": "organization"
+                                }
+                            }
+                        },
+                        {
+                            "listAttributes": {
+                                "entity_id": {
+                                    "type": "string",
+                                    "source_name": "author.user_id"
+                                },
+                                "entity_name": {
+                                    "type": "string",
+                                    "source_name": "author.name"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                                "role_name": {
+                                    "type": "string",
+                                    "default": "author"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }, 
+    "article": {
+        "default": {
+            "model_name": "products",
+            "is_reformat": false,
+            "listAttributes": {
+                "product_id": {
+                    "type": "string",
+                    "source_name": "id"
+                },
+                "product_name": {
+                    "type": "string",
+                    "source_name": "name"
+                },
+                "description": {
+                    "type": "string",
+                    "source_name": "description"
+                }
+            },
+            "list_foreign_attributes": [
+                {
+                    "foreign_table": "resource",
+                    "connected_table": "productresource",
+                    "connected_field1": "product_id",
+                    "connected_field2": "resource_id",
+                    "current_table": "products",
+                    "sources": [
+                        {
+                            "listAttributes": {
+                                "resource_url": {
+                                    "type": "string",
+                                    "source_name": "image"
+                                }, 
+                                "resource_name": {
+                                    "type": "string",
+                                    "default": "image"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        }, 
+                        {
+                            "listAttributes": {
+                                "resource_url": {
+                                    "type": "string",
+                                    "source_name": "url"
+                                }, 
+                                "resource_name": {
+                                    "type": "string",
+                                    "default": "url"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "web-activity": {
+        "default": {
+            "model_name": "interaction",
+            "is_reformat": true,
+            "listAttributes": {
+                "session_id": {
+                    "type": "string",
+                    "source_name": "ga_session_id"
+                },
+                "visit_date": {
+                    "type": "string",
+                    "source_name": "event_date"
+                },
+                "operating_system": {
+                    "type": "string",
+                    "source_name": "device.operating_system"
+                },
+                "device_category": {
+                    "type": "string",
+                    "source_name": "device.category"
+                },
+                "device_brand": {
+                    "type": "string",
+                    "source_name": "device.mobile_brand_name"
+                },
+                "browser": {
+                    "type": "string",
+                    "source_name": "device.web_info.browser"
+                },
+                "page_title": {
+                    "type": "string",
+                    "source_name": "page_title"
+                },
+                "page_location": {
+                    "type": "string",
+                    "source_name": "page_location"
+                },
+                "event_name": {
+                    "type": "string",
+                    "source_name": "event_name"
+                }
+            }, 
+            "list_foreign_attributes": [
+                {
+                    "foreign_table": "geolocation",
+                    "connected_table": "interactionlocation",
+                    "connected_field1": "interaction_id",
+                    "connected_field2": "location_id",
+                    "current_table": "interaction",
+                    "sources": [
+                        {
+                            "listAttributes": {
+                                "city": {
+                                    "type": "string",
+                                    "source_name": "geo.city"
+                                },
+                                "region": {
+                                    "type": "string",
+                                    "source_name": "geo.continent"
+                                },
+                                "state": {
+                                    "type": "string",
+                                    "source_name": "geo.region"
+                                },
+                                "country": {
+                                    "type": "string",
+                                    "default": "geo.country"
+                                }
+                            },
+                            "listConnectedAttributes": {
+                            }
+                        }
+                    ]
+                }
+            ], 
+            "list_connected_attributes": [
+                {
+                    "connected_table": "eventpreference",
+                    "connected_field": "activity_id",
+                    "current_table": "interaction",
+                    "sources": [
+                        {
+                            "array": "events",
+                            "listAttributes": {
+                                "event_id": {
+                                    "type": "string",
+                                    "source_name": "id"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
