@@ -709,7 +709,8 @@ def get_most_popular(table_name, sort_field, display_fields, quantity=1, domain=
             filter_params['product_type'] = domain
 
     list_objs = Model.objects.filter(Q(**filter_params))
-    list_objs = [model_to_dict[obj] for obj in list(list_objs)]
+    list_objs = [model_to_dict(obj) for obj in list(list_objs)]
+
     list_new_objs = []
 
     for obj in list_objs:
@@ -823,10 +824,10 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
     else:
         if (item_type == 'events'):
             list_recommend_items = get_similar(table_name=item_type, sort_field='next_date',
-                                               display_fields=display_fields['Similar'][item_type], quantity=quantity, item=item_id)
+                                               display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
         elif (item_type == 'products'):
             list_recommend_items = get_similar(
-                table_name=item_type, sort_field='', display_fields=display_fields['Similar'][item_type], quantity=quantity, item=item_id)
+                table_name=item_type, sort_field='', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
 
     return list_recommend_items
 
@@ -875,7 +876,6 @@ def train_similar_recommend(request):
     try:
         body = json.loads(request.body)
         item_type = body['itemType']
-
         # Training
         ContentBasedRecommender.train_items_by_items(table_name=item_type)
         # Get similarity recommendation training info
@@ -914,6 +914,7 @@ def get_similar_train_info():
                            {'name': 'Article', 'value': 'products'}]
 
         for item_type in list_item_types:
+            #Get total number of trained items
             if (LdaSimilarityVersion.objects.filter(item_type=item_type['value']).exists()):
                 obj = LdaSimilarityVersion.objects.filter(
                     item_type=item_type['value']).latest('created_at')
@@ -923,6 +924,10 @@ def get_similar_train_info():
             else:
                 item_type['latest_training_at'] = ''
                 item_type['number_trained_items'] = 0
+            
+            #Get total number of items
+            Model = apps.get_model(app_label='dimadb', model_name=item_type['value'])
+            item_type['number_items'] = len(Model.objects.all())
 
         return list_item_types
     except Exception as error:
@@ -966,11 +971,19 @@ def update_activity_weight(request):
     try:
         body = json.loads(request.body)
         web_activity_types = body['webActivityInfo']
-
+        
         for type in web_activity_types:
             try:
-                WebActivityType.objects.filter(name=type).update(
-                    value=web_activity_types[type])
+                web_activities = list(WebActivityType.objects.filter(name=type))
+                
+                if (len(web_activities)):
+                    web_activity = web_activities[0]
+                    web_activity.value = web_activity_types[type]
+                    web_activity.save()
+                else:
+                    new_activity_type = WebActivityType(
+                        name=type, value=web_activity_types[type])
+                    new_activity_type.save()
             except:
                 new_activity_type = WebActivityType(
                     name=type, value=web_activity_types[type])
