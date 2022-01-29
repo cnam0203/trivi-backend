@@ -509,7 +509,7 @@ def reformated_data(json_data, item_type, template_type):
         # Each item type & each template type => reformat differently
         if (item_type == 'web-activity' and template_type == 'default'):
             list_required_attributes = [
-                'event_date', 'events', 'event_name', 'device', 'geo']
+                'event_date', 'items', 'event_name', 'device', 'geo']
             list_required_event_params = [
                 'ga_session_id', 'page_title', 'page_location']
             for obj in json_data:
@@ -539,15 +539,19 @@ def reformated_data(json_data, item_type, template_type):
 
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
 def import_json_file(request, item_type):
     try:
         # Get config
         template_type = request.POST.get('template')
         files = request.FILES.getlist('files[]')
+        print(files)
+        print(template_type)
         file = files[0]
         json_data = json.load(file)
 
-        if (template_type is None):
+        if (template_type is None or template_type == ''):
             template_type = 'default'
 
         # Get template configuration info
@@ -580,10 +584,11 @@ def get_mapping_templates(request, item_type):
 
 
 @api_view(['POST'])
-def import_api(request):
+@authentication_classes([])
+@permission_classes([])
+def import_api(request, item_type):
     try:
         request_body = json.loads(request.body)
-        item_type = request_body['itemType']
         url = request_body['url']
         bearer_token = request_body['bearerToken']
         template_type = request_body['template']
@@ -594,6 +599,9 @@ def import_api(request):
         }
         if (bearer_token != ''):
             header['Authorization'] = 'Bearer ' + bearer_token
+        
+        if (template_type is None or template_type == ''):
+            template_type = 'default'
 
         response = http.request('GET', url, headers=header)
         response_body = json.loads(response.data)
@@ -644,18 +652,21 @@ def delete_multiple_items(request, item_type, pk):
 
 
 def generate_recommend_api(level, item_type, recommend_type, quantity, domain, item_id):
-    api = 'http://localhost:8000/dimadb/get-recommendation/?'
+    api = 'http://localhost:8000/dimadb/get-list-recommend/?'
 
-    api += 'level=' + level
-    api += '&itemType=' + item_type
-    api += '&quantity=' + quantity
+
+    api += 'itemType=' + item_type
+    api += '&level=' + level
 
     if (recommend_type):
         api += '&recommendType=' + recommend_type
     if (domain):
         api += '&domain=' + domain
     if (item_id):
-        api += '&item=' + item_id
+        api += '&itemId=' + item_id
+        
+    
+    api += '&quantity=' + quantity
 
     return api
 
@@ -696,7 +707,7 @@ def get_most_popular(table_name, sort_field, display_fields, quantity=1, domain=
     Model = apps.get_model(app_label='dimadb', model_name=table_name)
     list_recommend_items = []
     filter_params = {}
-
+    
     if (sort_field != ''):
         today = datetime.today()
         sort_field_name = sort_field + '__gte'
@@ -709,8 +720,10 @@ def get_most_popular(table_name, sort_field, display_fields, quantity=1, domain=
             filter_params['product_type'] = domain
 
     list_objs = Model.objects.filter(Q(**filter_params))
-    list_objs = [model_to_dict[obj] for obj in list(list_objs)]
+    list_objs = [model_to_dict(obj) for obj in list(list_objs)]
     list_new_objs = []
+    
+    
 
     for obj in list_objs:
         score = 0
@@ -783,7 +796,7 @@ def get_similar(table_name, sort_field, display_fields, quantity=1, item_id=None
 def get_recommend_items(level, item_type, recommend_type, quantity, domain, item_id):
     list_recommend_items = []
     display_fields = {
-        'Upcomming': {
+        'Upcoming': {
             'events': ['id', 'event_id', 'event_name', 'event_title', 'next_date', 'description']
         },
         'Most popular': {
@@ -796,8 +809,8 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
         }
     }
 
-    if (level == 'General'):
-        if (recommend_type == 'Upcomming'):
+    if (level == 'Homepage'):
+        if (recommend_type == 'Upcoming'):
             if (item_type == 'events'):
                 list_recommend_items = get_upcoming(
                     table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
@@ -809,7 +822,7 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
                 list_recommend_items = get_most_popular(
                     table_name=item_type, sort_field='', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
     elif (level == 'Domain'):
-        if (recommend_type == 'Upcomming'):
+        if (recommend_type == 'Upcoming'):
             if (item_type == 'events'):
                 list_recommend_items = get_upcoming(table_name=item_type, sort_field='next_date',
                                                     display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
@@ -823,10 +836,10 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
     else:
         if (item_type == 'events'):
             list_recommend_items = get_similar(table_name=item_type, sort_field='next_date',
-                                               display_fields=display_fields['Similar'][item_type], quantity=quantity, item=item_id)
+                                               display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
         elif (item_type == 'products'):
             list_recommend_items = get_similar(
-                table_name=item_type, sort_field='', display_fields=display_fields['Similar'][item_type], quantity=quantity, item=item_id)
+                table_name=item_type, sort_field='', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
 
     return list_recommend_items
 
@@ -834,14 +847,14 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
 @api_view(['GET'])
 @authentication_classes([])
 @permission_classes([])
-def get_recommendation(request):
+def get_list_recommend(request):
     try:
         level = request.GET.get('level', None)
         item_type = request.GET.get('itemType', None)
         recommend_type = request.GET.get('recommendType', None)
         quantity = request.GET.get('quantity', None)
         domain = request.GET.get('domain', None)
-        item_id = request.GET.get('item', None)
+        item_id = request.GET.get('itemId', None)
         list_recommend_items = get_recommend_items(
             level, item_type, recommend_type, quantity, domain, item_id)
         return Response({'items': list_recommend_items}, status=status.HTTP_200_OK)
@@ -858,7 +871,7 @@ def get_recommend_api(request):
         recommend_type = body['recommendType']
         quantity = body['quantity']
         domain = body['domain']
-        item_id = body['item']
+        item_id = body['itemId']
 
         api = generate_recommend_api(
             level, item_type, recommend_type, quantity, domain, item_id)
@@ -914,6 +927,8 @@ def get_similar_train_info():
                            {'name': 'Article', 'value': 'products'}]
 
         for item_type in list_item_types:
+            Model = apps.get_model(app_label='dimadb', model_name=item_type['value'])
+            item_type['number_items'] = len(Model.objects.all())
             if (LdaSimilarityVersion.objects.filter(item_type=item_type['value']).exists()):
                 obj = LdaSimilarityVersion.objects.filter(
                     item_type=item_type['value']).latest('created_at')

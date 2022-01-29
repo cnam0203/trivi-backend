@@ -375,11 +375,11 @@
                     "current_table": "interaction",
                     "sources": [
                         {
-                            "array": "events",
+                            "array": "items",
                             "listAttributes": {
                                 "event_id": {
                                     "type": "string",
-                                    "source_name": "id"
+                                    "source_name": "item_id"
                                 }
                             }
                         }
