@@ -3,7 +3,7 @@
         "default": {
             "model_name": "events",
             "is_reformat": false,
-            "listAttributes": {
+            "fields": {
                 "event_id": {
                     "type": "string",
                     "source_name": "id"
@@ -53,16 +53,13 @@
                     "source_name": "public"
                 }
             },
-            "list_foreign_attributes": [
+            "m2m_tables": [
                 {
-                    "foreign_table": "resource",
-                    "connected_table": "eventresource",
-                    "connected_field1": "event_id",
-                    "connected_field2": "resource_id",
-                    "current_table": "events",
+                    "model_name": "resource",
+                    "display_name": "resource",
                     "sources": [
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "resource_url": {
                                     "type": "string",
                                     "source_name": "display_image_url"
@@ -72,11 +69,16 @@
                                     "default": "display_image"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "event_id",
+                            "connected_field2": "resource_id",
+                            "connected_table": {
+                                "model_name": "eventresource",
+                                "display_name": "",
+                                "fields": {}
                             }
                         },
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "resource_url": {
                                     "type": "string",
                                     "source_name": "photo_url"
@@ -86,11 +88,16 @@
                                     "default": "photo"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "event_id",
+                            "connected_field2": "resource_id",
+                            "connected_table": {
+                                "model_name": "eventresource",
+                                "display_name": "",
+                                "fields": {}
                             }
                         },
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "resource_url": {
                                     "type": "string",
                                     "source_name": "extra_large_photo_url"
@@ -100,11 +107,16 @@
                                     "default": "extra_large_photo"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "event_id",
+                            "connected_field2": "resource_id",
+                            "connected_table": {
+                                "model_name": "eventresource",
+                                "display_name": "",
+                                "fields": {}
                             }
                         },
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "resource_url": {
                                     "type": "string",
                                     "source_name": "thumbnail_url"
@@ -114,11 +126,16 @@
                                     "default": "thumbnail"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "event_id",
+                            "connected_field2": "resource_id",
+                            "connected_table": {
+                                "model_name": "eventresource",
+                                "display_name": "",
+                                "fields": {}
                             }
                         },
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "resource_url": {
                                     "type": "string",
                                     "source_name": "website_url"
@@ -128,19 +145,22 @@
                                     "default": "website"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "event_id",
+                            "connected_field2": "resource_id",
+                            "connected_table": {
+                                "model_name": "eventresource",
+                                "display_name": "",
+                                "fields": {}
                             }
                         }
                     ]
-                }, {
-                    "foreign_table": "geolocation",
-                    "connected_table": "eventlocation",
-                    "connected_field1": "event_id",
-                    "connected_field2": "location_id",
-                    "current_table": "events",
+                }, 
+                {
+                    "model_name": "geolocation",
+                    "display_name": "geolocation",
                     "sources": [
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "location_id": {
                                     "type": "string",
                                     "source_name": "venue.id"
@@ -174,23 +194,27 @@
                                     "source_name": "venue.zip"
                                 }
                             },
-                            "listConnectedAttributes": {
-                                "room": {
-                                    "type": "string",
-                                    "source_name": "room.id"
+                            "connected_field1": "event_id",
+                            "connected_field2": "location_id",
+                            "connected_table": {
+                                "model_name": "eventlocation",
+                                "display_name": "",
+                                "fields": {
+                                    "room": {
+                                        "type": "string",
+                                        "source_name": "room.id"
+                                    }
                                 }
                             }
                         }
                     ]
-                }, {
-                    "foreign_table": "businessentity",
-                    "connected_table": "entityeventrole",
-                    "connected_field1": "event_id",
-                    "connected_field2": "entity_id",
-                    "current_table": "events",
+                }, 
+                {
+                    "model_name": "businessentity",
+                    "display_name": "businessentity",
                     "sources": [
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "entity_id": {
                                     "type": "string",
                                     "source_name": "organization.id"
@@ -204,15 +228,21 @@
                                     "source_name": "organization.slug"
                                 }
                             },
-                            "listConnectedAttributes": {
-                                "role_name": {
-                                    "type": "string",
-                                    "default": "organization"
+                            "connected_field1": "event_id",
+                            "connected_field2": "entity_id",
+                            "connected_table": {
+                                "model_name": "entityeventrole",
+                                "display_name": "",
+                                "fields": {
+                                    "role_name": {
+                                        "type": "string",
+                                        "default": "organization"
+                                    }
                                 }
                             }
                         },
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "entity_id": {
                                     "type": "string",
                                     "source_name": "author.user_id"
@@ -222,23 +252,30 @@
                                     "source_name": "author.name"
                                 }
                             },
-                            "listConnectedAttributes": {
-                                "role_name": {
-                                    "type": "string",
-                                    "default": "author"
+                            "connected_field1": "event_id",
+                            "connected_field2": "entity_id",
+                            "connected_table": {
+                                "model_name": "entityeventrole",
+                                "display_name": "",
+                                "fields": {
+                                    "role_name": {
+                                        "type": "string",
+                                        "default": "author"
+                                    }
                                 }
                             }
                         }
                     ]
                 }
-            ]
+            ],
+            "o2m_tables": []
         }
-    }, 
+    },
     "article": {
         "default": {
             "model_name": "products",
             "is_reformat": false,
-            "listAttributes": {
+            "fields": {
                 "product_id": {
                     "type": "string",
                     "source_name": "id"
@@ -252,16 +289,13 @@
                     "source_name": "description"
                 }
             },
-            "list_foreign_attributes": [
+            "m2m_tables": [
                 {
-                    "foreign_table": "resource",
-                    "connected_table": "productresource",
-                    "connected_field1": "product_id",
-                    "connected_field2": "resource_id",
-                    "current_table": "products",
+                    "model_name": "resource",
+                    "display_name": "resource",
                     "sources": [
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "resource_url": {
                                     "type": "string",
                                     "source_name": "image"
@@ -271,11 +305,16 @@
                                     "default": "image"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "product_id",
+                            "connected_field2": "resource_id",
+                            "connected_table": {
+                                "model_name": "productresource",
+                                "display_name": "",
+                                "fields": {}
                             }
-                        }, 
+                        },
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "resource_url": {
                                     "type": "string",
                                     "source_name": "url"
@@ -285,19 +324,25 @@
                                     "default": "url"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "product_id",
+                            "connected_field2": "resource_id",
+                            "connected_table": {
+                                "model_name": "productresource",
+                                "display_name": "",
+                                "fields": {}
                             }
                         }
                     ]
                 }
-            ]
+            ],
+            "o2m_tables": []
         }
     },
     "web-activity": {
         "default": {
             "model_name": "interaction",
             "is_reformat": true,
-            "listAttributes": {
+            "fields": {
                 "session_id": {
                     "type": "string",
                     "source_name": "ga_session_id"
@@ -334,17 +379,14 @@
                     "type": "string",
                     "source_name": "event_name"
                 }
-            }, 
-            "list_foreign_attributes": [
+            },
+            "m2m_tables": [
                 {
-                    "foreign_table": "geolocation",
-                    "connected_table": "interactionlocation",
-                    "connected_field1": "interaction_id",
-                    "connected_field2": "location_id",
-                    "current_table": "interaction",
+                    "model_name": "geolocation",
+                    "display_name": "geolocation",
                     "sources": [
                         {
-                            "listAttributes": {
+                            "fields": {
                                 "city": {
                                     "type": "string",
                                     "source_name": "geo.city"
@@ -362,21 +404,26 @@
                                     "default": "geo.country"
                                 }
                             },
-                            "listConnectedAttributes": {
+                            "connected_field1": "interaction_id",
+                            "connected_field2": "location_id",
+                            "connected_table": {
+                                "model_name": "interactionlocation",
+                                "display_name": "",
+                                "fields": {}
                             }
                         }
                     ]
                 }
-            ], 
-            "list_connected_attributes": [
+            ],
+            "o2m_tables": [
                 {
-                    "connected_table": "eventpreference",
-                    "connected_field": "activity_id",
-                    "current_table": "interaction",
+                    "model_name": "eventpreference",
+                    "display_name": "eventpreference",
                     "sources": [
                         {
+                            "connected_field": "activity_id",
                             "array": "items",
-                            "listAttributes": {
+                            "fields": {
                                 "event_id": {
                                     "type": "string",
                                     "source_name": "item_id"

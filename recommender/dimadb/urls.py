@@ -14,7 +14,7 @@ urlpatterns = [
     path('get-import-info/<item_type>/', get_import_info),
     path('get-mapping-templates/<item_type>/', get_mapping_templates),
     path('get-reports/', get_reports),
-    path('delete-multiple-items/<item_type>/<pk>/', delete_multiple_items),
+    path('delete-multiple-items/<item_type>/<pk>/', delete_imported_items),
     path('train-similar-recommend/', train_similar_recommend),
     path('update-activity-weight/', update_activity_weight),
 ]
