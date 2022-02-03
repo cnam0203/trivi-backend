@@ -417,12 +417,13 @@ def mapping_data(data, template):
             import_info = ImportInfo(table_name=template['model_name'])
             import_info.save()
             import_info_id = import_info.id
+            print(import_info_id)
 
             for obj in data:
                 obj_info = assign_object_info(template['listAttributes'], obj)
                 if obj_info:
                     count += 1
-                    obj['import_id'] = import_info_id
+                    obj_info['import_id'] = import_info_id
                     Model = apps.get_model(
                         app_label='dimadb', model_name=template['model_name'])
                     new_obj = Model(**obj_info)

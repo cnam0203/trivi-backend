@@ -165,25 +165,26 @@ class LdaModelManager(object):
         
         # Converting the document to lowercase
         raw = doc.lower()
-
         # Remove website and email
         raw = re.sub("((\S+)?(http(s)?)(\S+))|((\S+)?(www)(\S+))|((\S+)?(\@)(\S+)?)", " ", raw)
         raw = re.sub("[^a-zA-Z ]", "", raw)
 
         # Steming 
-        stemmed_doc = stemmer.stem_sentence(raw) 
-
+        stemmed_doc = stemmer.stem_sentence(raw)     
         # Tokenize the document
         tokens = tokenizer.tokenize(stemmed_doc)
 
         # Remove Stopwords
-        non_stopword_tokens = self.remove_stopwords(tokens)
+        non_stopword_tokens = self.remove_stopwords(tokens)  
 
         # Retrieve only NOUN and VERB tokens
-        only_noun_verb_tokens = [ w for (w, pos) in nltk.pos_tag(non_stopword_tokens) if pos.startswith('NN') or pos.startswith('VB')]
+        # print(nltk.__version__)
+        # print('NLTK:', nltk.pos_tag(['hello', 'but']))
+        # only_noun_verb_tokens = [ w for (w, pos) in nltk.pos_tag(non_stopword_tokens) if pos.startswith('NN') or pos.startswith('VB')]
+
 
         # Get the finalized tokens here.
-        final_tokens = only_noun_verb_tokens
+        final_tokens = non_stopword_tokens
 
         return final_tokens
 
