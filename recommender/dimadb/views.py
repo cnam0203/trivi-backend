@@ -10,6 +10,7 @@ from django.apps import apps
 from .serializers import *
 from .models import *
 from .content_based_recommender import ContentBasedRecommender
+from .utils import *
 
 import random
 import json
@@ -18,41 +19,15 @@ import os
 import pydash
 import urllib3
 
-#
+# Global varial
+API_KEY = "culturemauricie2022"
+IP_DOMAIN = "http://localhost:8000"
+
+# Read configure file
 module_dir = os.path.dirname(__file__)
-item_detail_file_path = os.path.join(module_dir, 'item_detail.json')
-item_list_file_path = os.path.join(module_dir, 'item_list.json')
-mapping_file_path = os.path.join(module_dir, 'mapping.json')
-
-
-def get_json_info(file_path, obj_key):
-    json_file = open(file_path)
-    json_obj = json.load(json_file)
-    json_file.close()
-    return pydash.get(json_obj, obj_key)
-
-
-def assign_object_info(list_attributes, obj):
-    new_obj = {}
-
-    for attribute in list_attributes:
-        attribute_info = list_attributes[attribute]
-        value = ''
-
-        # Get source value
-        if 'default' in attribute_info:
-            value = attribute_info['default']
-        elif 'source_name' in attribute_info:
-            if (pydash.get(obj, attribute_info['source_name'])):
-                value = pydash.get(obj, attribute_info['source_name'])
-            else:
-                continue
-        else:
-            continue
-        # Check data type
-        # Assign value
-        new_obj[attribute] = value
-    return new_obj
+mapping_template_file_path = os.path.join(module_dir, 'configuration/mapping_template.json')
+schema_table_file_path = os.path.join(module_dir, 'configuration/schema_table.json')
+schema_detail_file_path = os.path.join(module_dir, 'configuration/schema_detail.json')
 
 
 @api_view(['GET'])
@@ -69,30 +44,22 @@ def home(request):
         # Total number of sessions (a session includes multiple interactions)
         sessions = len(Interaction.objects.values('session_id').distinct())
         # Total number of web activities by page location
-        pages = list(Interaction.objects.all().values('page_location').annotate(
-            total=Count('page_location')).order_by('-total'))
+        pages = list(Interaction.objects.all().values('page_location').annotate(total=Count('page_location')).order_by('-total'))
         # Total number of web activities by device categories
-        device_categories = Interaction.objects.all().values(
-            'device_category').annotate(total=Count('device_category'))
+        device_categories = Interaction.objects.all().values('device_category').annotate(total=Count('device_category'))
         for category in list(device_categories):
             type = category['device_category']
             traffics[type] = category['total']
 
         # Web activities report - Total number of web activities by event name
-        web_activity_data = Interaction.objects.all().values(
-            'event_name').annotate(total=Count('event_name'))
-        web_activity_report = [(item['event_name'], item['total'])
-                               for item in list(web_activity_data)]
+        web_activity_data = Interaction.objects.all().values('event_name').annotate(total=Count('event_name'))
+        web_activity_report = [(item['event_name'], item['total']) for item in list(web_activity_data)]
         # Cultural event report  - Total number of cultural events by event type
-        event_data = Events.objects.all().values(
-            'event_type').annotate(total=Count('event_type'))
-        event_report = [(item['event_type'], item['total'])
-                        for item in list(event_data)]
+        event_data = Events.objects.all().values('event_type').annotate(total=Count('event_type'))
+        event_report = [(item['event_type'], item['total']) for item in list(event_data)]
         # Cutural product report - Total number of cultural products by product type
-        product_data = Products.objects.all().values(
-            'product_type').annotate(total=Count('product_type'))
-        product_report = [(item['product_type'], item['total'])
-                          for item in list(product_data)]
+        product_data = Products.objects.all().values('product_type').annotate(total=Count('product_type'))
+        product_report = [(item['product_type'], item['total']) for item in list(product_data)]
 
         # Add info for report to generate charts
         reports = [
@@ -125,19 +92,17 @@ def home(request):
     except Exception as exception:
         return Response({'message': exception})
 
-# Get list of items (all rows) from a table
 
-
-class ItemList(APIView):
+class ItemList(APIView):  
+    # Get list of items (all rows) from a table
     def get(self, request, item_type):
         try:
             # Read config file
-            item_list_info = get_json_info(item_list_file_path, item_type)
+            item_list_schema = get_json_info(schema_table_file_path, item_type)
             # Get info (model_name of item, list required fields to show, ...)
-            model_name = item_list_info['model']
-            fields = item_list_info['fields']
-            view_detail = item_list_info['view_detail']
-
+            model_name = item_list_schema['model_name']
+            fields = item_list_schema['fields']
+            view_detail = item_list_schema['view_detail']
             Model = apps.get_model(app_label='dimadb', model_name=model_name)
             items = Model.objects.all().values(*fields)
             return Response({
@@ -148,27 +113,19 @@ class ItemList(APIView):
         except Exception as exception:
             return Response({'message': exception})
 
-# Get item detail (detail of a row) from a table
-
 
 class ItemDetail(APIView):
-    # Get info
+    # Get item detail (detail of a row) from a table
     def get(self, request, item_type, pk, format=None):
         try:
             # Read config file
-            item_detail_info = get_json_info(item_detail_file_path, item_type)
-            # Get info (model_name of item, list of attributes of items, ...)
-            model_name = item_detail_info['model_name']
-            list_attributes = item_detail_info['list_attributes']
-            list_foreign_attributes = item_detail_info['list_foreign_attributes']
-            # Query item info from config info above
-            item_form = create_item_form(
-                model_name, pk, list_attributes, list_foreign_attributes)
-            return Response(item_form)
+            item_detail_schema = get_json_info(schema_detail_file_path, item_type)
+            item_detail = get_item_detail_form(pk, item_detail_schema)
+            return Response(item_detail)
         except Exception as exception:
             return Response({'message': exception})
+    
     # Update info
-
     def put(self, request, item_type, pk, format=None):
         try:
             item_form = json.loads(request.body)
@@ -176,8 +133,8 @@ class ItemDetail(APIView):
             return Response({'message': 'Update successfully'}, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({'message': exception})
+    
     # Delete info
-
     def delete(self, request, item_type, pk, format=None):
         try:
             item_form = json.loads(request.body)
@@ -185,8 +142,8 @@ class ItemDetail(APIView):
             return Response({'message': 'Delete successfully'}, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({'message': exception})
+    
     # New info
-
     def post(self, request, item_type, pk, format=None):
         try:
             item_form = json.loads(request.body)
@@ -196,6 +153,7 @@ class ItemDetail(APIView):
             return Response({'message': exception})
 
 
+# Get data(row) from a table(model)
 def get_model_object(model_name, pk):
     if (pk != 'form'):
         try:
@@ -208,68 +166,86 @@ def get_model_object(model_name, pk):
         return {}
 
 
-def create_item_form(model_name, pk, list_attributes, list_foreign_tables):
+# Get all information of an object from several tables (event information coming from event, geolocation, ...)
+def get_item_detail_form(pk, schema_detail):
     form_attributes = {}
+    # Get info from schema_detail
+    model_name = schema_detail['model_name']
+    fields = schema_detail['fields']
+    m2m_tables = []
+    o2m_tables = []
+    if ('m2m_tables' in schema_detail.keys()):
+        m2m_tables = schema_detail['m2m_tables']
+    if ('o2m_tables' in schema_detail.keys()):
+        o2m_tables = schema_detail['o2m_tables']
+
+    # Query item from db
     Model = apps.get_model(app_label='dimadb', model_name=model_name)
     obj = get_model_object(model_name, pk)
-
+    print(obj)
     # List attributes consists field names in primary table
-    for attribute in list_attributes:
-        form_attributes[attribute] = {}
-        attribute_type = Model._meta.get_field(
-            attribute).get_internal_type()  # Data type of field
-        # If field has enum type => get selections
-        attribute_choices = Model._meta.get_field(attribute).choices
+    for field in fields:
+        form_attributes[field] = {}
+        attribute_type = Model._meta.get_field(field).get_internal_type()
+        attribute_choices = Model._meta.get_field(field).choices
         # Assign value for each field of item
-        if (attribute in obj.keys()):
-            form_attributes[attribute]['value'] = obj[attribute]
+        if (field in obj.keys()):
+            form_attributes[field]['value'] = obj[field]
         else:
-            form_attributes[attribute]['value'] = ''
+            form_attributes[field]['value'] = ''
         # Assign data type for each field of item
         if (attribute_choices != None):
-            form_attributes[attribute]['type'] = 'select'
-            form_attributes[attribute]['choices'] = [
+            form_attributes[field]['type'] = 'select'
+            form_attributes[field]['choices'] = [
                 value for (value, name) in attribute_choices]
         else:
             if (attribute_type == 'IntegerField'):
-                form_attributes[attribute]['type'] = 'integer'
+                form_attributes[field]['type'] = 'integer'
             elif (attribute_type == 'DecimalField'):
-                form_attributes[attribute]['type'] = 'decimal'
+                form_attributes[field]['type'] = 'decimal'
             elif (attribute_type == 'TextField'):
-                form_attributes[attribute]['type'] = 'textarea'
+                form_attributes[field]['type'] = 'textarea'
             elif (attribute_type == 'DateTimeField' or attribute_type == 'DateField'):
-                if form_attributes[attribute]['value'] == '' or form_attributes[attribute]['value'] is None:
-                    form_attributes[attribute]['value'] = ''
+                form_attributes[field]['type'] = 'date'
+                if form_attributes[field]['value'] == '' or form_attributes[field]['value'] is None:
+                    form_attributes[field]['value'] = ''
                 else:
-                    form_attributes[attribute]['value'] = form_attributes[attribute]['value'].strftime(
+                    form_attributes[field]['value'] = form_attributes[field]['value'].strftime(
                         "%Y-%m-%d")
-                form_attributes[attribute]['type'] = 'date'
             else:
-                form_attributes[attribute]['type'] = 'text'
+                form_attributes[field]['type'] = 'text'
 
-    # List foreign tables consists info of name, field names of foreign tables that hold additional of item
-    for foreign_table in list_foreign_tables:
+    # List m2m tables consists additional info of item (geolocation, resource, etc.)
+    # Ex: event - eventlocation(connected_table, who hold 2 primary keys of two tables) - geolocation(m2m)
+    for m2m_table in m2m_tables:
         # Get config info
-        name = foreign_table['name']
-        foreign_table_name = foreign_table['foreign_table']
-        connected_table_name = foreign_table['connected_table']
-        connected_field1 = foreign_table['connected_field1']
-        connected_field2 = foreign_table['connected_field2']
-        list_foreign_attributes = foreign_table['list_attributes']
-        list_connected_attributes = foreign_table['list_connected_attributes']
-        # Get array of foreign objects in foreign table
-        form_attributes[name] = {}
-        form_attributes[name]['type'] = 'array'
-        form_attributes[name]['value'] = get_list_foreign_objects(
-            foreign_table, obj)
-        # Create form info for foreign table
-        element_attributes = create_item_form(
-            foreign_table_name, 'form', list_foreign_attributes, [])
-        element_attributes['connectedAttributes'] = create_item_form(
-            connected_table_name, 'form', list_connected_attributes, [])
+        m2m_display_name = m2m_table['display_name']
+        connected_table = m2m_table['connected_table']
+        connected_field1 = m2m_table['connected_field1']
+        connected_field2 = m2m_table['connected_field2']
+        # Get list of rows in m2m table
+        form_attributes[m2m_display_name] = {}
+        form_attributes[m2m_display_name]['type'] = 'm2m'
+        form_attributes[m2m_display_name]['value'] = get_m2m_items(m2m_table, obj['id'])
+        # Create an empty form info for m2m table
+        element_attributes = get_item_detail_form('form', m2m_table)
+        element_attributes['connectedAttributes'] = get_item_detail_form('form', connected_table)
         element_attributes['connectedAttributes']['connected_field1'] = connected_field1
         element_attributes['connectedAttributes']['connected_field2'] = connected_field2
-        form_attributes[name]['elementAttributes'] = element_attributes
+        form_attributes[m2m_display_name]['elementAttributes'] = element_attributes
+
+    # List o2m tables conists additional info of item (geolocation, resource, etc.)
+    # Ex: evet - eventpreference(o2m)
+    for o2m_table in o2m_tables:
+        o2m_display_name = o2m_table['display_name']
+        connected_field = o2m_table['connected_field']
+        # Get list of rows in o2m table
+        form_attributes[o2m_display_name] = {}
+        form_attributes[o2m_display_name]['type'] = 'o2m'
+        form_attributes[o2m_display_name]['value'] = get_o2m_items(o2m_table, obj['id'])
+        element_attributes = get_item_detail_form('form', o2m_table)
+        element_attributes['connected_field'] = connected_field
+        form_attributes[o2m_display_name]['elementAttributes'] = element_attributes
 
     form_info = {
         'type': 'object',
@@ -283,122 +259,128 @@ def create_item_form(model_name, pk, list_attributes, list_foreign_tables):
     return form_info
 
 
-def get_item_info(obj):
-    new_obj = {}
-    for attribute in obj.keys():
-        if attribute != 'id':
-            if obj[attribute]['type'] == 'array':
-                next
-            else:
-                if obj[attribute]['type'] == 'integer' or obj[attribute]['type'] == 'decimal':
-                    if obj[attribute]['value'] == '':
-                        new_obj[attribute] = 0
-                    else:
-                        new_obj[attribute] = obj[attribute]['value']
-                elif obj[attribute]['type'] == 'date' or obj[attribute]['type'] == 'datetime':
-                    if obj[attribute]['value'] == '':
-                        new_obj[attribute] = None
-                    else:
-                        new_obj[attribute] = obj[attribute]['value']
-                else:
-                    new_obj[attribute] = obj[attribute]['value']
-    return new_obj
-
-
+# Update item based on form sent from GUI
 def update_item_info(form_info, connected_field1_id=None):
     status = form_info['status']
     obj_id = form_info['attributes']['id']['value']
-    obj_info = get_item_info(form_info['attributes'])
-    modelName = form_info['name']
-    Model = apps.get_model(app_label='dimadb', model_name=modelName)
+    obj_info = filter_form_object_info(form_info['attributes'])
+    model_name = form_info['name']
+    Model = apps.get_model(app_label='dimadb', model_name=model_name)
 
-    if (status == 'new'):
+    if ('connected_field' in form_info.keys()):
+        connected_field = form_info['connected_field']
+        obj_info[connected_field] = connected_field1_id
+
+    if (status == 'new'):  # If new info created
         new_obj = Model(**obj_info)
         new_obj.save()
-        update_list_foreign_objects(form_info['attributes'], new_obj.id)
+        update_multiple_items('m2m', form_info['attributes'], new_obj.id)
+        update_multiple_items('o2m', form_info['attributes'], new_obj.id)
         if ('connectedAttributes' in form_info.keys()):
             connected_field2_id = new_obj.id
-            create_connected_object(
-                form_info['connectedAttributes'], connected_field1_id, connected_field2_id)
-    elif (status == 'created'):
+            create_connected_object(form_info['connectedAttributes'], connected_field1_id, connected_field2_id)
+    elif (status == 'created'):     # If info updated
         Model.objects.filter(id=obj_id).update(**obj_info)
         updated_obj = Model.objects.get(id=obj_id)
-        update_list_foreign_objects(form_info['attributes'], updated_obj.id)
+        update_multiple_items('m2m', form_info['attributes'], updated_obj.id)
+        update_multiple_items('o2m', form_info['attributes'], updated_obj.id)
         if ('connectedAttributes' in form_info.keys()):
             update_item_info(form_info['connectedAttributes'])
-    else:
+    else:                           # If info deleted
         delete_item_info(form_info)
 
 
+# Delete row from database
 def delete_item_info(form_info):
     obj_id = form_info['attributes']['id']['value']
     if (id != ''):
         model_name = form_info['name']
         Model = apps.get_model(app_label='dimadb', model_name=model_name)
         Model.objects.filter(id=obj_id).delete()
-        delete_list_foreign_objects(form_info['attributes'])
+        delete_multiple_items('m2m', form_info['attributes'])
+        delete_multiple_items('o2m', form_info['attributes'])
         if ('connectedAttributes' in form_info.keys()):
             delete_item_info(form_info['connectedAttributes'])
 
 
-def get_list_foreign_objects(foreign_table, obj):
-    foreign_forms = []
-    if obj:
+# Get all items in m2m table
+def get_m2m_items(m2m_table, connected_field1_id):
+    m2m_forms = []
+    if connected_field1_id:
         # Get config info
-        foreign_table_name = foreign_table['foreign_table']
-        connected_table_name = foreign_table['connected_table']
-        connected_field1 = foreign_table['connected_field1']
-        connected_field2 = foreign_table['connected_field2']
-        list_foreign_attributes = foreign_table['list_attributes']
-        list_connected_attributes = foreign_table['list_connected_attributes']
+        connected_table = m2m_table['connected_table']
+        connected_field1 = m2m_table['connected_field1']
+        connected_field2 = m2m_table['connected_field2']
+        connected_model_name = connected_table['model_name']
 
-        # Get connected model objects to query connected id
-        ConnectedModel = apps.get_model(
-            app_label='dimadb', model_name=connected_table_name)
-        filter_params = {connected_field1: obj['id']}
-        connected_objects = list(
-            ConnectedModel.objects.filter(**filter_params))
-        connected_objects = [model_to_dict(obj) for obj in connected_objects]
+        # Get connected model objects to query connected_field2_id
+        ConnectedModel = apps.get_model(app_label='dimadb', model_name=connected_model_name)
+        filter_params = {connected_field1: connected_field1_id}
+        connected_objects = list(ConnectedModel.objects.filter(**filter_params))
+        connected_objects = [model_to_dict(connected_obj) for connected_obj in connected_objects]
 
         # For each connected object (row) in connected table, query and create form for that connected object + foreign object
         for connected_obj in connected_objects:
-            connected_form = create_item_form(
-                connected_table_name, connected_obj['id'], list_connected_attributes, [])
-            foreign_form = create_item_form(
-                foreign_table_name, connected_obj[connected_field2], list_foreign_attributes, [])
-            foreign_form['connectedAttributes'] = connected_form
-            foreign_form['connectedAttributes']['connected_field1'] = connected_field1
-            foreign_form['connectedAttributes']['connected_field2'] = connected_field2
+            connected_form = get_item_detail_form(connected_obj['id'], connected_table)
+            m2m_form = get_item_detail_form(connected_obj[connected_field2], m2m_table)
+            m2m_form['connectedAttributes'] = connected_form
+            m2m_form['connectedAttributes']['connected_field1'] = connected_field1
+            m2m_form['connectedAttributes']['connected_field2'] = connected_field2
+            m2m_forms.append(m2m_form)
 
-            foreign_forms.append(foreign_form)
-
-    return foreign_forms
+    return m2m_forms
 
 
-def update_list_foreign_objects(obj, connected_field1_id=None):
+# Get all items in o2m table
+def get_o2m_items(o2m_table, connected_field_id):
+    o2m_forms = []
+    if connected_field_id:
+        # Get config info
+        o2m_model_name = o2m_table['model_name']
+        connected_field = o2m_table['connected_field']
+
+        # Get o2m model objects
+        O2MModel = apps.get_model(app_label='dimadb', model_name=o2m_model_name)
+        filter_params = {connected_field: connected_field_id}
+        o2m_objects = list(O2MModel.objects.filter(**filter_params))
+        o2m_objects = [model_to_dict(obj) for obj in o2m_objects]
+
+        # Create o2m item form (row)
+        for o2m_obj in o2m_objects:
+            o2m_form = get_item_detail_form(o2m_obj['id'], o2m_table)
+            o2m_form['connected_field'] = connected_field
+            o2m_forms.append(o2m_form)
+
+    return o2m_forms
+
+
+# Update/New alternately items in m2m/o2m table
+def update_multiple_items(table_type, obj, connected_field1_id=None):
     for attribute in obj.keys():
         if attribute != 'id':
-            if obj[attribute]['type'] == 'array':
+            if obj[attribute]['type'] == table_type:
                 list_values = obj[attribute]['value']
                 for value in list_values:
                     update_item_info(value, connected_field1_id)
 
 
-def delete_list_foreign_objects(obj, objId=None):
+# Delete alternately items in m2m table
+def delete_multiple_items(table_type, obj):
     for attribute in obj.keys():
         if attribute != 'id':
-            if obj[attribute]['type'] == 'array':
+            if obj[attribute]['type'] == table_type:
                 list_values = obj[attribute]['value']
                 for value in list_values:
                     delete_item_info(value)
 
 
+# Create object in connected table (eventlocation, eventresource, etc)
 def create_connected_object(form_info, connected_field1_id, connected_field2_id):
     connected_field1 = form_info['connected_field1']
     connected_field2 = form_info['connected_field2']
     model_name = form_info['name']
 
-    obj_info = get_item_info(form_info['attributes'])
+    obj_info = filter_form_object_info(form_info['attributes'])
     obj_info[connected_field1] = connected_field1_id
     obj_info[connected_field2] = connected_field2_id
 
@@ -407,119 +389,118 @@ def create_connected_object(form_info, connected_field1_id, connected_field2_id)
     obj.save()
 
 
+#Mapping data in file with data model
 def mapping_data(data, template):
-    total = 0
-    count = 0
+    total = 0   # Total object rows in imported data
+    count = 0   # Total object rows saved in database
     try:
         if isinstance(data, list):
             total = len(data)
-
+            # Store history of import
             import_info = ImportInfo(table_name=template['model_name'])
             import_info.save()
-            import_info_id = import_info.id
-            print(import_info_id)
+            
+            # Get info from schema_detail
+            model_name = template['model_name']
+            fields = template['fields']
+            m2m_tables = []
+            o2m_tables = []
+            if ('m2m_tables' in template.keys()):
+                m2m_tables = template['m2m_tables']
+            if ('o2m_tables' in template.keys()):
+                o2m_tables = template['o2m_tables']
 
+            #Mapping
             for obj in data:
-                obj_info = assign_object_info(template['listAttributes'], obj)
+                obj_info = filter_imported_object_info(fields, obj)
                 if obj_info:
-                    count += 1
-                    obj_info['import_id'] = import_info_id
-                    Model = apps.get_model(
-                        app_label='dimadb', model_name=template['model_name'])
+                    # Store obj in primary table
+                    obj_info['import_id'] = import_info.id
+                    Model = apps.get_model(app_label='dimadb', model_name=model_name)
                     new_obj = Model(**obj_info)
                     new_obj.save()
-                    new_obj_id = new_obj.id
 
-                    if ('list_foreign_attributes' in template):
-                        for foreign_table in template['list_foreign_attributes']:
-                            foreign_table_name = foreign_table['foreign_table']
-                            connected_table_name = foreign_table['connected_table']
-                            connected_field1 = foreign_table['connected_field1']
-                            connected_field2 = foreign_table['connected_field2']
-                            sources = foreign_table['sources']
+                    # Store additional objs in m2m tables
+                    for m2m_table in m2m_tables:
+                        m2m_model_name = m2m_table['model_name']
+                        m2m_sources = m2m_table['sources']
 
-                            for source in sources:
-                                foreign_objs = []
-                                if 'array' not in source:
-                                    foreign_objs.append(obj)
-                                else:
-                                    if (pydash.get(obj, source['array'])):
-                                        foreign_objs = pydash.get(
-                                            obj, source['array'])
+                        for source in m2m_sources:
+                            m2m_objs = []
+                            if 'array' not in source:
+                                m2m_objs.append(obj)
+                            else:
+                                if (pydash.get(obj, source['array'])):
+                                    m2m_objs = pydash.get(obj, source['array'])
 
-                                for foreign_obj in foreign_objs:
-                                    foreign_obj_info = assign_object_info(
-                                        source['listAttributes'], foreign_obj)
-                                    if (foreign_obj_info):
-                                        foreign_obj_info['import_id'] = import_info_id
-                                        ForeignModel = apps.get_model(
-                                            app_label='dimadb', model_name=foreign_table_name)
-                                        new_foreign_obj = ForeignModel(
-                                            **foreign_obj_info)
-                                        new_foreign_obj.save()
-                                        new_foreign_obj_id = new_foreign_obj.id
+                            for m2m_obj in m2m_objs:
+                                m2m_obj_info = filter_imported_object_info(source['fields'], m2m_obj)
+                                if (m2m_obj_info):
+                                    m2m_obj_info['import_id'] = import_info.id
+                                    M2MModel = apps.get_model(app_label='dimadb', model_name=m2m_model_name)
+                                    new_m2m_obj = M2MModel(**m2m_obj_info)
+                                    new_m2m_obj.save()
 
-                                        if 'listConnectedAttributes' in source:
-                                            connected_obj_info = assign_object_info(
-                                                source['listConnectedAttributes'], foreign_obj)
-                                            connected_obj_info[connected_field1] = new_obj_id
-                                            connected_obj_info[connected_field2] = new_foreign_obj_id
-                                            connected_obj_info['import_id'] = import_info_id
-                                            ConnectedModel = apps.get_model(
-                                                app_label='dimadb', model_name=connected_table_name)
-                                            new_connected_obj = ConnectedModel(
-                                                **connected_obj_info)
-                                            new_connected_obj.save()
+                                    # Store obj in connected table
+                                    # Read configure info
+                                    connected_table = source['connected_table']
+                                    connected_field1 = source['connected_field1']
+                                    connected_field2 = source['connected_field2']
+                                    connected_model_name = connected_table['model_name']
 
-                    if ('list_connected_attributes' in template):
-                        for connected_table in template['list_connected_attributes']:
-                            connected_table_name = connected_table['connected_table']
-                            connected_field = connected_table['connected_field']
-                            sources = connected_table['sources']
+                                    connected_obj_info = filter_imported_object_info(connected_table['fields'], m2m_obj)
+                                    connected_obj_info[connected_field1] = new_obj.id
+                                    connected_obj_info[connected_field2] = new_m2m_obj.id
+                                    connected_obj_info['import_id'] = import_info.id
+                                    ConnectedModel = apps.get_model(app_label='dimadb', model_name=connected_model_name)
+                                    new_connected_obj = ConnectedModel(**connected_obj_info)
+                                    new_connected_obj.save()
 
-                            for source in sources:
-                                connected_objs = []
-                                if 'array' not in source:
-                                    connected_objs.append(obj)
-                                else:
-                                    if (pydash.get(obj, source['array'])):
-                                        connected_objs = pydash.get(
-                                            obj, source['array'])
+                    # Store additional objs in o2m tables
+                    for o2m_table in o2m_tables:
+                        o2m_model_name = o2m_table['model_name']
+                        sources = o2m_table['sources']
 
-                                for connected_obj in connected_objs:
-                                    connected_obj_info = assign_object_info(
-                                        source['listAttributes'], connected_obj)
-                                    if (connected_obj_info):
-                                        connected_obj_info[connected_field] = new_obj_id
-                                        connected_obj_info['import_id'] = import_info_id
-                                        ConnectedModel = apps.get_model(
-                                            app_label='dimadb', model_name=connected_table_name)
-                                        new_connected_obj = ConnectedModel(
-                                            **connected_obj_info)
-                                        new_connected_obj.save()
+                        for source in sources:
+                            o2m_objs = []
+                            if 'array' not in source:
+                                o2m_objs.append(obj)
+                            else:
+                                if (pydash.get(obj, source['array'])):
+                                    o2m_objs = pydash.get(obj, source['array'])
+
+                            for o2m_obj in o2m_objs:
+                                o2m_obj_info = filter_imported_object_info(source['fields'], o2m_obj)
+                                if (o2m_obj_info):
+                                    connected_field = source['connected_field']
+                                    o2m_obj_info[connected_field] = new_obj.id
+                                    o2m_obj_info['import_id'] = import_info.id
+                                    O2MModel = apps.get_model(app_label='dimadb', model_name=o2m_model_name)
+                                    new_o2m_obj = O2MModel(**o2m_obj_info)
+                                    new_o2m_obj.save()
+
+                count += 1
             return {'message': 'Import successfully' + '.\n' + 'Import ' + str(count) + '/' + str(total) + 'object(s).'}
         else:
             return {'message': 'Wrong json format'}
     except Exception as error:
-        return {'message': error + '.\n' + 'Import ' + str(count) + '/' + str(total) + 'object(s).'}
+        return {'message':  'There is an error(duplication, ...).\n' + 'Import ' + str(count) + '/' + str(total) + 'object(s).'}
 
 
+# Some imported json file required to be reformated before mapping
 def reformated_data(json_data, item_type, template_type):
     try:
         reformated_json_data = []
         # Each item type & each template type => reformat differently
         if (item_type == 'web-activity' and template_type == 'default'):
-            list_required_attributes = [
-                'event_date', 'events', 'event_name', 'device', 'geo']
-            list_required_event_params = [
-                'ga_session_id', 'page_title', 'page_location']
+            list_required_attributes = ['event_date', 'items', 'event_name', 'device', 'geo']
+            list_required_event_params = ['ga_session_id', 'page_title', 'page_location']
             for obj in json_data:
                 new_obj = {}
                 for attribute in list_required_attributes:
                     if attribute == 'event_date':
                         date = pydash.get(obj, attribute)
-                        format_date = date[:4] + '-' + \
-                            date[4:6] + '-' + date[6:8]
+                        format_date = date[:4] + '-' + date[4:6] + '-' + date[6:8]
                         new_obj[attribute] = format_date
                     else:
                         new_obj[attribute] = pydash.get(obj, attribute)
@@ -540,20 +521,20 @@ def reformated_data(json_data, item_type, template_type):
 
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
 def import_json_file(request, item_type):
     try:
-        # Get config
-        template_type = request.POST.get('template')
+        # Get request info
         files = request.FILES.getlist('files[]')
         file = files[0]
         json_data = json.load(file)
 
-        if (template_type is None):
-            template_type = 'default'
-
         # Get template configuration info
-        template = get_json_info(
-            mapping_file_path, item_type + '.' + template_type)
+        template_type = request.POST.get('template')
+        if (template_type is None or template_type == ''):
+            template_type = 'default'
+        template = get_json_info(mapping_template_file_path, item_type + '.' + template_type)
         is_reformat = template['is_reformat']
 
         # Check reformat
@@ -571,37 +552,39 @@ def import_json_file(request, item_type):
 def get_mapping_templates(request, item_type):
     try:
         list_templates = []
-        json_file = open(mapping_file_path)
-        json_obj = json.load(json_file)
+        json_file = open(mapping_template_file_path)
+        json_data = json.load(json_file)
         json_file.close()
-        list_templates = [key for key in json_obj[item_type]]
+        list_templates = [key for key in json_data[item_type]]
         return Response({'listTemplates': list_templates}, status=status.HTTP_200_OK)
     except Exception as error:
         return Response({'message': error})
 
 
 @api_view(['POST'])
-def import_api(request):
+@authentication_classes([])
+@permission_classes([])
+def import_api(request, item_type):
     try:
+        # Get request info
         request_body = json.loads(request.body)
-        item_type = request_body['itemType']
         url = request_body['url']
         bearer_token = request_body['bearerToken']
         template_type = request_body['template']
-        # Get Data
+
+        # Get data from url
         http = urllib3.PoolManager()
-        header = {
-            'Accept': '*/*'
-        }
+        header = {'Accept': '*/*'}
         if (bearer_token != ''):
             header['Authorization'] = 'Bearer ' + bearer_token
-
+        if (template_type is None or template_type == ''):
+            template_type = 'default'
         response = http.request('GET', url, headers=header)
         response_body = json.loads(response.data)
         response_data = response_body['data']
+
         # Import
-        mapping_template = get_json_info(
-            mapping_file_path, item_type + '.' + template_type)
+        mapping_template = get_json_info(mapping_template_file_path, item_type + '.' + template_type)
         mapping_result = mapping_data(response_data, mapping_template)
 
         return Response(mapping_result, status=status.HTTP_200_OK)
@@ -617,7 +600,6 @@ def get_import_info(request, item_type):
             "article": "products",
             "web-activity": "interaction"
         }
-
         snippets = ImportInfo.objects.filter(table_name=tables[item_type])
         serializer = ImportInfoSerializer(snippets, many=True)
         return Response({'items': serializer.data}, status=status.HTTP_200_OK)
@@ -626,7 +608,7 @@ def get_import_info(request, item_type):
 
 
 @api_view(['DELETE'])
-def delete_multiple_items(request, item_type, pk):
+def delete_imported_items(request, item_type, pk):
     try:
         tables = {
             "event": ["events", "geolocation", "eventlocation", "resource", "eventresource", "businessentity", "entityeventrole"],
@@ -637,18 +619,18 @@ def delete_multiple_items(request, item_type, pk):
         for table in tables[item_type]:
             Model = apps.get_model(app_label='dimadb', model_name=table)
             Model.objects.filter(import_id=pk).delete()
-
         ImportInfo.objects.filter(id=pk).delete()
+        
         return Response({}, status=status.HTTP_200_OK)
     except Exception as error:
         return Response({'message': error})
 
 
+# Generate recommend api to retrieve recommendation
 def generate_recommend_api(level, item_type, recommend_type, quantity, domain, item_id):
-    api = 'http://localhost:8000/dimadb/get-recommendation/?'
-
-    api += 'level=' + level
-    api += '&itemType=' + item_type
+    api = IP_DOMAIN + '/dimadb/get-list-recommend/?'
+    api += 'itemType=' + item_type
+    api += '&level=' + level
     api += '&quantity=' + quantity
 
     if (recommend_type):
@@ -656,11 +638,12 @@ def generate_recommend_api(level, item_type, recommend_type, quantity, domain, i
     if (domain):
         api += '&domain=' + domain
     if (item_id):
-        api += '&item=' + item_id
+        api += '&itemId=' + item_id
 
     return api
 
 
+# Get upcoming recommendation
 def get_upcoming(table_name, sort_field, display_fields, quantity=1, domain=None):
     Model = apps.get_model(app_label='dimadb', model_name=table_name)
     list_recommend_items = []
@@ -679,20 +662,19 @@ def get_upcoming(table_name, sort_field, display_fields, quantity=1, domain=None
 
     list_objs = Model.objects.filter(Q(**filter_params)).order_by(sort_field)
     list_objs = list(list_objs)
-    new_quantity = int(quantity)
-    new_display_fields = list(display_fields)
 
-    for i in range(0, new_quantity):
+    for i in range(0, int(quantity)):
         if (i < len(list_objs)):
             obj = model_to_dict(list_objs[i])
             recommend_item = {}
-            for field in new_display_fields:
+            for field in list(display_fields):
                 recommend_item[field] = obj[field]
             list_recommend_items.append(recommend_item)
 
     return list_recommend_items
 
 
+# Get most popular recommendation
 def get_most_popular(table_name, sort_field, display_fields, quantity=1, domain=None):
     Model = apps.get_model(app_label='dimadb', model_name=table_name)
     list_recommend_items = []
@@ -711,81 +693,71 @@ def get_most_popular(table_name, sort_field, display_fields, quantity=1, domain=
 
     list_objs = Model.objects.filter(Q(**filter_params))
     list_objs = [model_to_dict(obj) for obj in list(list_objs)]
-
     list_new_objs = []
 
     for obj in list_objs:
-        score = 0
+        obj['score'] = 0  # Most popular score
         list_item_activities = []
 
+        # Find web activities that contain this item
         if (table_name == 'events'):
-            list_item_activities = EventPreference.objects.filter(
-                event_id=obj['event_id'])
+            list_item_activities = EventPreference.objects.filter(event_id=obj['event_id'])
         elif (table_name == 'products'):
-            list_item_activities = ProductPreference.objects.filter(
-                product_id=obj['product_id'])
+            list_item_activities = ProductPreference.objects.filter(product_id=obj['product_id'])
 
+        # For each web activity, find important weight of web activity type
         for item_activity in list(list_item_activities):
             item_activity = model_to_dict(item_activity)
             try:
-                activity = Interaction.objects.get(
-                    id=item_activity['activity_id'])
+                activity = Interaction.objects.get(id=item_activity['activity_id'])
                 activity_type = model_to_dict(activity)
                 activity_type = activity_type['event_name']
                 try:
-                    activity_weight = WebActivityType.objects.get(
-                        name=activity_type)
-                    score = score + model_to_dict(activity_weight)['value']
+                    activity_weight = WebActivityType.objects.get(name=activity_type)
+                    obj['score'] = obj['score'] + model_to_dict(activity_weight)['value']
                 except:
                     pass
             except:
                 pass
-
-        obj['score'] = score
         list_new_objs.append(obj)
 
-    list_new_objs = sorted(
-        list_new_objs, key=lambda d: d['score'], reverse=True)
-    new_quantity = int(quantity)
-    new_display_fields = list(display_fields)
-
-    for i in range(0, new_quantity):
+    list_new_objs = sorted(list_new_objs, key=lambda d: d['score'], reverse=True)
+    for i in range(0, int(quantity)):
         if (i < len(list_new_objs)):
             obj = list_new_objs[i]
             recommend_item = {}
-            for field in new_display_fields:
+            for field in list(display_fields):
                 recommend_item[field] = obj[field]
             list_recommend_items.append(recommend_item)
 
     return list_recommend_items
 
 
+# Get similarity recommendation
 def get_similar(table_name, sort_field, display_fields, quantity=1, item_id=None):
     Model = apps.get_model(app_label='dimadb', model_name=table_name)
-    list_similar = ContentBasedRecommender.recommend_items_by_items(
-        table_name=table_name, items_id=item_id)
-    new_quantity = int(quantity)
-    new_display_fields = list(display_fields)
+    list_similar_items = ContentBasedRecommender.recommend_items_by_items(table_name=table_name, items_id=item_id)
     list_recommend_items = []
 
-    for i in range(0, new_quantity):
-        if (i < len(list_similar)):
-            similar_obj = list_similar[i]
+    for i in range(0, int(quantity)):
+        if (i < len(list_similar_items)):
+            similar_obj = list_similar_items[i]
             obj = Model.objects.get(id=similar_obj['id'])
             obj = model_to_dict(obj)
             obj['similarity'] = similar_obj['similarity']
             recommend_item = {}
-            for field in new_display_fields:
+            for field in list(display_fields):
                 recommend_item[field] = obj[field]
             list_recommend_items.append(recommend_item)
 
     return list_recommend_items
 
 
+# Get list of recommend items
 def get_recommend_items(level, item_type, recommend_type, quantity, domain, item_id):
     list_recommend_items = []
     display_fields = {
-        'Upcomming': {
+        'Upcoming': {
             'events': ['id', 'event_id', 'event_name', 'event_title', 'next_date', 'description']
         },
         'Most popular': {
@@ -798,37 +770,29 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
         }
     }
 
-    if (level == 'General'):
-        if (recommend_type == 'Upcomming'):
+    if (level == 'Homepage'):
+        if (recommend_type == 'Upcoming'):
             if (item_type == 'events'):
-                list_recommend_items = get_upcoming(
-                    table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
+                list_recommend_items = get_upcoming(table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
         if (recommend_type == 'Most popular'):
             if (item_type == 'events'):
-                list_recommend_items = get_most_popular(
-                    table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
+                list_recommend_items = get_most_popular(table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
             elif (item_type == 'products'):
-                list_recommend_items = get_most_popular(
-                    table_name=item_type, sort_field='', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
+                list_recommend_items = get_most_popular(table_name=item_type, sort_field='', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
     elif (level == 'Domain'):
-        if (recommend_type == 'Upcomming'):
+        if (recommend_type == 'Upcoming'):
             if (item_type == 'events'):
-                list_recommend_items = get_upcoming(table_name=item_type, sort_field='next_date',
-                                                    display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
+                list_recommend_items = get_upcoming(table_name=item_type, sort_field='next_date',display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
         if (recommend_type == 'Most popular'):
             if (item_type == 'events'):
-                list_recommend_items = get_most_popular(
-                    table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
+                list_recommend_items = get_most_popular(table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
             elif (item_type == 'products'):
-                list_recommend_items = get_most_popular(
-                    table_name=item_type, sort_field='', display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
+                list_recommend_items = get_most_popular(table_name=item_type, sort_field='', display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
     else:
         if (item_type == 'events'):
-            list_recommend_items = get_similar(table_name=item_type, sort_field='next_date',
-                                               display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
+            list_recommend_items = get_similar(table_name=item_type, sort_field='next_date', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
         elif (item_type == 'products'):
-            list_recommend_items = get_similar(
-                table_name=item_type, sort_field='', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
+            list_recommend_items = get_similar(table_name=item_type, sort_field='', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
 
     return list_recommend_items
 
@@ -836,17 +800,22 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
 @api_view(['GET'])
 @authentication_classes([])
 @permission_classes([])
-def get_recommendation(request):
+def get_list_recommend(request):
     try:
-        level = request.GET.get('level', None)
-        item_type = request.GET.get('itemType', None)
-        recommend_type = request.GET.get('recommendType', None)
-        quantity = request.GET.get('quantity', None)
-        domain = request.GET.get('domain', None)
-        item_id = request.GET.get('item', None)
-        list_recommend_items = get_recommend_items(
-            level, item_type, recommend_type, quantity, domain, item_id)
-        return Response({'items': list_recommend_items}, status=status.HTTP_200_OK)
+        # Authorization
+        bearer_token = request.headers.get('Authorization')
+        if (bearer_token == 'Bearer ' + API_KEY):
+            # Read request info
+            level = request.GET.get('level', None)
+            item_type = request.GET.get('itemType', None)
+            recommend_type = request.GET.get('recommendType', None)
+            quantity = request.GET.get('quantity', None)
+            domain = request.GET.get('domain', None)
+            item_id = request.GET.get('itemId', None)
+            list_recommend_items = get_recommend_items(level, item_type, recommend_type, quantity, domain, item_id)
+            return Response({'items': list_recommend_items}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'Authorization failed'}, status=status.HTTP_401_UNAUTHORIZED)
     except Exception as error:
         return Response({'message': error})
 
@@ -854,20 +823,18 @@ def get_recommendation(request):
 @api_view(['POST'])
 def get_recommend_api(request):
     try:
+        # Read request info
         body = json.loads(request.body)
         level = body['level']
         item_type = body['itemType']
         recommend_type = body['recommendType']
         quantity = body['quantity']
         domain = body['domain']
-        item_id = body['item']
-
-        api = generate_recommend_api(
-            level, item_type, recommend_type, quantity, domain, item_id)
-        list_recommend_items = get_recommend_items(
-            level, item_type, recommend_type, quantity, domain, item_id)
-
-        return Response({'items': list_recommend_items, 'api': api}, status=status.HTTP_200_OK)
+        item_id = body['itemId']
+        #Get recommend api + recommend list
+        api = generate_recommend_api(level, item_type, recommend_type, quantity, domain, item_id)
+        list_recommend_items = get_recommend_items(level, item_type, recommend_type, quantity, domain, item_id)
+        return Response({'items': list_recommend_items, 'api': api, 'apiKey': API_KEY}, status=status.HTTP_200_OK)
     except Exception as error:
         return Response({'message': error})
 
@@ -875,6 +842,7 @@ def get_recommend_api(request):
 @api_view(['POST'])
 def train_similar_recommend(request):
     try:
+        # Read request info
         body = json.loads(request.body)
         item_type = body['itemType']
         # Training
@@ -889,16 +857,15 @@ def train_similar_recommend(request):
 @api_view(['GET'])
 def get_recommend_info(request):
     try:
+        # Get list domain(item_type)
         event_snippets = Events.objects.all()
         event_serializer = EventSerializer(event_snippets, many=True)
+        event_types = Events.objects.values('event_type').distinct()
+        event_types = [item['event_type'] for item in list(event_types)]
 
         article_snippets = Products.objects.all()
         article_serializer = ArticleSerializer(article_snippets, many=True)
-
-        event_types = Events.objects.values('event_type').distinct()
         article_types = Products.objects.values('product_type').distinct()
-
-        event_types = [item['event_type'] for item in list(event_types)]
         article_types = [item['product_type'] for item in list(article_types)]
 
         return Response({'events': event_serializer.data,
@@ -909,24 +876,25 @@ def get_recommend_info(request):
         return Response({'message': error})
 
 
+# Get history of similarity recommendation training
 def get_similar_train_info():
     try:
         list_item_types = [{'name': 'Événement', 'value': 'events'},
                            {'name': 'Article', 'value': 'products'}]
-
         for item_type in list_item_types:
-            #Get total number of trained items
+            Model = apps.get_model(app_label='dimadb', model_name=item_type['value'])
+            item_type['number_items'] = len(Model.objects.all())
+
+            # Get total number of trained items
             if (LdaSimilarityVersion.objects.filter(item_type=item_type['value']).exists()):
-                obj = LdaSimilarityVersion.objects.filter(
-                    item_type=item_type['value']).latest('created_at')
+                obj = LdaSimilarityVersion.objects.filter(item_type=item_type['value']).latest('created_at')
                 item_type['latest_training_at'] = str(obj)
-                item_type['number_trained_items'] = model_to_dict(obj)[
-                    'n_products']
+                item_type['number_trained_items'] = model_to_dict(obj)['n_products']
             else:
                 item_type['latest_training_at'] = ''
                 item_type['number_trained_items'] = 0
-            
-            #Get total number of items
+
+            # Get total number of items
             Model = apps.get_model(app_label='dimadb', model_name=item_type['value'])
             item_type['number_items'] = len(Model.objects.all())
 
@@ -939,24 +907,17 @@ def get_similar_train_info():
 def get_configure_info(request):
     try:
         similar_train_info = get_similar_train_info()
-
-        web_activity_types = Interaction.objects.values(
-            'event_name').distinct()
-        web_activity_types = [item['event_name']
-                              for item in list(web_activity_types)]
-        existed_web_activity_types = WebActivityType.objects.values(
-            'name').distinct()
-        existed_web_activity_types = [item['name']
-                                      for item in list(existed_web_activity_types)]
-
+        web_activity_types = Interaction.objects.values('event_name').distinct()
+        web_activity_types = [item['event_name'] for item in list(web_activity_types)]
+        existed_web_activity_types = WebActivityType.objects.values('name').distinct()
+        existed_web_activity_types = [item['name'] for item in list(existed_web_activity_types)]
         web_activity_types = web_activity_types + existed_web_activity_types
         web_activity_types = list(dict.fromkeys(web_activity_types))
 
         web_activities_info = {}
         for activity_type in web_activity_types:
             try:
-                activity_type_obj = WebActivityType.objects.get(
-                    name=activity_type)
+                activity_type_obj = WebActivityType.objects.get(name=activity_type)
                 activity_type_obj = model_to_dict(activity_type_obj)
                 web_activities_info[activity_type] = activity_type_obj['value']
             except:
@@ -970,29 +931,41 @@ def get_configure_info(request):
 @api_view(['POST'])
 def update_activity_weight(request):
     try:
+        # Read requestinfo
         body = json.loads(request.body)
         web_activity_types = body['webActivityInfo']
-        
+
+        #Update/new web activity type
         for type in web_activity_types:
             try:
                 web_activities = list(WebActivityType.objects.filter(name=type))
-                
+                # Check whether type exists in WebActivityType table
                 if (len(web_activities)):
                     web_activity = web_activities[0]
                     web_activity.value = web_activity_types[type]
                     web_activity.save()
                 else:
-                    new_activity_type = WebActivityType(
-                        name=type, value=web_activity_types[type])
+                    new_activity_type = WebActivityType(name=type, value=web_activity_types[type])
                     new_activity_type.save()
             except:
-                new_activity_type = WebActivityType(
-                    name=type, value=web_activity_types[type])
+                new_activity_type = WebActivityType(name=type, value=web_activity_types[type])
                 new_activity_type.save()
 
         return Response({}, status=status.HTTP_200_OK)
     except Exception as error:
         return Response({'message': error})
+
+
+# Generate report object (info, name, title, data)
+def create_report(name, title, data, chart_type, is_change):
+    return {
+        'name': name,
+        'title': title,
+        'data': data,
+        'type': chart_type,
+        'isChange': is_change,
+        'random': name + str(random.randint(0, 1000)),
+    }
 
 
 @api_view(['GET'])
@@ -1120,14 +1093,3 @@ def get_reports(request):
         return Response({'reports': reports}, status=status.HTTP_200_OK)
     except Exception as error:
         return Response({'message': error})
-
-
-def create_report(name, title, data, chart_type, is_change):
-    return {
-        'name': name,
-        'title': title,
-        'data': data,
-        'type': chart_type,
-        'isChange': is_change,
-        'random': name + str(random.randint(0, 1000)),
-    }

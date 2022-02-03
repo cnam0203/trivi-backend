@@ -1,1 +1,3 @@
 django/
+recommender/dimadb/migrations
+recommender/recommender/.env

@@ -1,11 +1,7 @@
 from rest_framework import serializers
 from rest_framework_jwt.settings import api_settings
-from .models import Events, Products, Session, Interaction, ImportInfo
+from .models import Events, Products, Interaction, ImportInfo
 
-class SessionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Session
-        fields = ('id', 'visit_id', 'visit_date', 'event_name', 'operating_system', 'device_category', 'device_brand', 'browser', 'page_title', 'page_location')
         
 class InteractionSerializer(serializers.ModelSerializer):
     class Meta:
