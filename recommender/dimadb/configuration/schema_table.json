@@ -6,7 +6,7 @@
     },
     "article": {
         "model_name": "products",
-        "fields": ["id", "product_id", "product_name", "product_price", "product_revenue", "status"],
+        "fields": ["id", "product_id", "product_name", "product_type", "product_price", "product_revenue", "status"],
         "view_detail": true
     },
     "web-activity": {

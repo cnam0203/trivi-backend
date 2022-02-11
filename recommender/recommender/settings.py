@@ -79,6 +79,7 @@ REST_FRAMEWORK = {
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',
     'http://3.129.66.167',
+    'http://new.dimalab.ca',
 ]
 
 ROOT_URLCONF = 'recommender.urls'

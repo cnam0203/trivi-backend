@@ -8,7 +8,7 @@
                     "type": "string",
                     "source_name": "id"
                 },
-                "event_title": {
+                "event_name": {
                     "type": "string",
                     "source_name": "title"
                 },
@@ -51,6 +51,14 @@
                 "is_public": {
                     "type": "string",
                     "source_name": "public"
+                },
+                "img": {
+                    "type": "string",
+                    "source_name": "display_image_url"
+                },
+                "url": {
+                    "type": "string",
+                    "source_name": "url"
                 }
             },
             "m2m_tables": [
@@ -58,25 +66,6 @@
                     "model_name": "resource",
                     "display_name": "resource",
                     "sources": [
-                        {
-                            "fields": {
-                                "resource_url": {
-                                    "type": "string",
-                                    "source_name": "display_image_url"
-                                }, 
-                                "resource_name": {
-                                    "type": "string",
-                                    "default": "display_image"
-                                }
-                            },
-                            "connected_field1": "event_id",
-                            "connected_field2": "resource_id",
-                            "connected_table": {
-                                "model_name": "eventresource",
-                                "display_name": "",
-                                "fields": {}
-                            }
-                        },
                         {
                             "fields": {
                                 "resource_url": {
@@ -287,54 +276,21 @@
                 "description": {
                     "type": "string",
                     "source_name": "description"
+                },
+                "product_type": {
+                    "type": "string",
+                    "source_name": "category"
+                },
+                "img": {
+                    "type": "string",
+                    "source_name": "img"
+                },
+                "url": {
+                    "type": "string",
+                    "source_name": "url"
                 }
             },
-            "m2m_tables": [
-                {
-                    "model_name": "resource",
-                    "display_name": "resource",
-                    "sources": [
-                        {
-                            "fields": {
-                                "resource_url": {
-                                    "type": "string",
-                                    "source_name": "image"
-                                }, 
-                                "resource_name": {
-                                    "type": "string",
-                                    "default": "image"
-                                }
-                            },
-                            "connected_field1": "product_id",
-                            "connected_field2": "resource_id",
-                            "connected_table": {
-                                "model_name": "productresource",
-                                "display_name": "",
-                                "fields": {}
-                            }
-                        },
-                        {
-                            "fields": {
-                                "resource_url": {
-                                    "type": "string",
-                                    "source_name": "url"
-                                }, 
-                                "resource_name": {
-                                    "type": "string",
-                                    "default": "url"
-                                }
-                            },
-                            "connected_field1": "product_id",
-                            "connected_field2": "resource_id",
-                            "connected_table": {
-                                "model_name": "productresource",
-                                "display_name": "",
-                                "fields": {}
-                            }
-                        }
-                    ]
-                }
-            ],
+            "m2m_tables": [],
             "o2m_tables": []
         }
     },

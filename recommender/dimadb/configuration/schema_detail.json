@@ -10,6 +10,8 @@
             "event_price",
             "slug",
             "lang",
+            "img",
+            "url",
             "start_date",
             "end_date",
             "next_date",
@@ -93,14 +95,7 @@
                 }
             }
         ],
-        "o2m_tables": [
-            {
-                "model_name": "eventpreference",
-                "display_name": "eventpreference",
-                "fields": ["id", "activity_id"],
-                "connected_field": "event_id" 
-            }
-        ]
+        "o2m_tables": []
     },
     "article": {
         "model_name": "products",
@@ -109,8 +104,11 @@
             "id",
             "product_id",
             "product_name",
+            "slug",
             "product_type",
             "product_price",
+            "img",
+            "url",
             "status",
             "description",
             "group_id"

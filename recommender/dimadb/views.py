@@ -182,7 +182,12 @@ def get_item_detail_form(pk, schema_detail):
     # Query item from db
     Model = apps.get_model(app_label='dimadb', model_name=model_name)
     obj = get_model_object(model_name, pk)
-    print(obj)
+
+    if ('id' in obj.keys()):
+        obj_id = obj['id']
+    else:
+        obj_id = None
+        
     # List attributes consists field names in primary table
     for field in fields:
         form_attributes[field] = {}
@@ -226,7 +231,7 @@ def get_item_detail_form(pk, schema_detail):
         # Get list of rows in m2m table
         form_attributes[m2m_display_name] = {}
         form_attributes[m2m_display_name]['type'] = 'm2m'
-        form_attributes[m2m_display_name]['value'] = get_m2m_items(m2m_table, obj['id'])
+        form_attributes[m2m_display_name]['value'] = get_m2m_items(m2m_table, obj_id)
         # Create an empty form info for m2m table
         element_attributes = get_item_detail_form('form', m2m_table)
         element_attributes['connectedAttributes'] = get_item_detail_form('form', connected_table)
@@ -242,7 +247,7 @@ def get_item_detail_form(pk, schema_detail):
         # Get list of rows in o2m table
         form_attributes[o2m_display_name] = {}
         form_attributes[o2m_display_name]['type'] = 'o2m'
-        form_attributes[o2m_display_name]['value'] = get_o2m_items(o2m_table, obj['id'])
+        form_attributes[o2m_display_name]['value'] = get_o2m_items(o2m_table, obj_id)
         element_attributes = get_item_detail_form('form', o2m_table)
         element_attributes['connected_field'] = connected_field
         form_attributes[o2m_display_name]['elementAttributes'] = element_attributes
@@ -758,39 +763,39 @@ def get_recommend_items(level, item_type, recommend_type, quantity, domain, item
     list_recommend_items = []
     display_fields = {
         'Upcoming': {
-            'events': ['id', 'event_id', 'event_name', 'event_title', 'next_date', 'description']
+            'events': ['id', 'event_id', 'event_name', 'next_date', 'end_date', 'description', "img", "url"]
         },
         'Most popular': {
-            'events': ['id', 'event_id', 'event_name', 'event_title', 'score', 'description'],
-            'products': ['id', 'product_id', 'product_name', 'score', 'description']
+            'events': ['id', 'event_id', 'event_name', 'next_date', 'end_date', 'score', 'description', "img", "url"],
+            'products': ['id', 'product_id', 'product_name', 'score', 'description', "img", "url"]
         },
         'Similar': {
-            'events': ['id', 'event_id', 'event_name', 'event_title', 'next_date', 'similarity', 'description'],
-            'products': ['id', 'product_id', 'product_name', 'similarity', 'description'],
+            'events': ['id', 'event_id', 'event_name', 'end_date', 'next_date', 'similarity', 'description', "img", "url"],
+            'products': ['id', 'product_id', 'product_name', 'similarity', 'description', "img", "url"],
         }
     }
 
     if (level == 'Homepage'):
         if (recommend_type == 'Upcoming'):
             if (item_type == 'events'):
-                list_recommend_items = get_upcoming(table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
+                list_recommend_items = get_upcoming(table_name=item_type, sort_field='end_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
         if (recommend_type == 'Most popular'):
             if (item_type == 'events'):
-                list_recommend_items = get_most_popular(table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
+                list_recommend_items = get_most_popular(table_name=item_type, sort_field='end_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
             elif (item_type == 'products'):
                 list_recommend_items = get_most_popular(table_name=item_type, sort_field='', display_fields=display_fields[recommend_type][item_type], quantity=quantity)
     elif (level == 'Domain'):
         if (recommend_type == 'Upcoming'):
             if (item_type == 'events'):
-                list_recommend_items = get_upcoming(table_name=item_type, sort_field='next_date',display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
+                list_recommend_items = get_upcoming(table_name=item_type, sort_field='end_date',display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
         if (recommend_type == 'Most popular'):
             if (item_type == 'events'):
-                list_recommend_items = get_most_popular(table_name=item_type, sort_field='next_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
+                list_recommend_items = get_most_popular(table_name=item_type, sort_field='end_date', display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
             elif (item_type == 'products'):
                 list_recommend_items = get_most_popular(table_name=item_type, sort_field='', display_fields=display_fields[recommend_type][item_type], quantity=quantity, domain=domain)
     else:
         if (item_type == 'events'):
-            list_recommend_items = get_similar(table_name=item_type, sort_field='next_date', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
+            list_recommend_items = get_similar(table_name=item_type, sort_field='end_date', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
         elif (item_type == 'products'):
             list_recommend_items = get_similar(table_name=item_type, sort_field='', display_fields=display_fields['Similar'][item_type], quantity=quantity, item_id=item_id)
 
