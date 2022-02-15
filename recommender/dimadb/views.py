@@ -97,6 +97,7 @@ class ItemList(APIView):
     # Get list of items (all rows) from a table
     def get(self, request, item_type):
         try:
+            import_id = request.GET.get('importId', None)
             # Read config file
             item_list_schema = get_json_info(schema_table_file_path, item_type)
             # Get info (model_name of item, list required fields to show, ...)
@@ -104,7 +105,11 @@ class ItemList(APIView):
             fields = item_list_schema['fields']
             view_detail = item_list_schema['view_detail']
             Model = apps.get_model(app_label='dimadb', model_name=model_name)
-            items = Model.objects.all().values(*fields)
+            
+            if (import_id is not None):
+                items = Model.objects.filter(import_id=import_id).values(*fields)
+            else:
+                items = Model.objects.all().values(*fields)
             return Response({
                 'items': items,
                 'isViewDetail': view_detail,
@@ -569,6 +574,7 @@ def get_mapping_templates(request, item_type):
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([])
+
 def import_api(request, item_type):
     try:
         # Get request info
@@ -674,7 +680,12 @@ def get_upcoming(table_name, sort_field, display_fields, quantity=1, domain=None
             recommend_item = {}
             for field in list(display_fields):
                 recommend_item[field] = obj[field]
+            if (table_name == 'events'):
+                recommend_item['location_name'] = get_location_name(obj['id'])
             list_recommend_items.append(recommend_item)
+            
+    if (len(list_recommend_items) == 0):
+        list_recommend_items = get_random(table_name, sort_field, display_fields, quantity)
 
     return list_recommend_items
 
@@ -733,7 +744,12 @@ def get_most_popular(table_name, sort_field, display_fields, quantity=1, domain=
             recommend_item = {}
             for field in list(display_fields):
                 recommend_item[field] = obj[field]
+            if (table_name == 'events'):
+                recommend_item['location_name'] = get_location_name(obj['id'])
             list_recommend_items.append(recommend_item)
+            
+    if (len(list_recommend_items) == 0):
+        list_recommend_items = get_random(table_name, sort_field, display_fields, quantity)
 
     return list_recommend_items
 
@@ -753,25 +769,78 @@ def get_similar(table_name, sort_field, display_fields, quantity=1, item_id=None
             recommend_item = {}
             for field in list(display_fields):
                 recommend_item[field] = obj[field]
+            if (table_name == 'events'):
+                recommend_item['location_name'] = get_location_name(obj['id'])
             list_recommend_items.append(recommend_item)
+            
+    if (len(list_recommend_items) == 0):
+        list_recommend_items = get_random(table_name, sort_field, display_fields, quantity)
 
     return list_recommend_items
 
 
+# Get random recommendation
+def get_random(table_name, sort_field, display_fields, quantity):
+    Model = apps.get_model(app_label='dimadb', model_name=table_name)
+    list_recommend_items = []
+    filter_params = {}
+
+    if (sort_field != ''):
+        today = datetime.today()
+        sort_field_name = sort_field + '__gte'
+        filter_params[sort_field_name] = today
+
+    if (sort_field != ''):
+        list_objs = Model.objects.filter(Q(**filter_params)).order_by(sort_field)
+    else:
+        list_objs = Model.objects.all()
+        
+    list_objs = list(list_objs)
+
+    for i in range(0, int(quantity)):
+        if (i < len(list_objs)):
+            obj = model_to_dict(list_objs[i])
+            recommend_item = {}
+            for field in list(display_fields):
+                if (field in obj):
+                    recommend_item[field] = obj[field]
+                else:
+                    recommend_item[field] = 0
+            if (table_name == 'events'):
+                recommend_item['location_name'] = get_location_name(obj['id'])
+            list_recommend_items.append(recommend_item)
+
+    return list_recommend_items
+
+# Get location name of event
+def get_location_name(event_id):
+    EventLocationModel = apps.get_model(app_label='dimadb', model_name='eventlocation')
+    LocationModel = apps.get_model(app_label='dimadb', model_name='geolocation')
+    location_name = ''
+    
+    event_location = EventLocationModel.objects.get(event_id=event_id)
+    
+    if (event_location):
+        location = LocationModel.objects.get(id=event_location.location_id)
+        location_name = location.location_name
+        
+    return location_name
+    
+    
 # Get list of recommend items
 def get_recommend_items(level, item_type, recommend_type, quantity, domain, item_id):
     list_recommend_items = []
     display_fields = {
         'Upcoming': {
-            'events': ['id', 'event_id', 'event_name', 'next_date', 'end_date', 'description', "img", "url"]
+            'events': ['id', 'event_id', 'event_name', 'event_type', 'next_date', 'end_date', 'description', "img", "url"]
         },
         'Most popular': {
-            'events': ['id', 'event_id', 'event_name', 'next_date', 'end_date', 'score', 'description', "img", "url"],
-            'products': ['id', 'product_id', 'product_name', 'score', 'description', "img", "url"]
+            'events': ['id', 'event_id', 'event_name', 'event_type', 'next_date', 'end_date', 'score', 'description', "img", "url"],
+            'products': ['id', 'product_id', 'product_name', 'product_type', 'score', 'description', "img", "url"]
         },
         'Similar': {
-            'events': ['id', 'event_id', 'event_name', 'end_date', 'next_date', 'similarity', 'description', "img", "url"],
-            'products': ['id', 'product_id', 'product_name', 'similarity', 'description', "img", "url"],
+            'events': ['id', 'event_id', 'event_name', 'event_type', 'end_date', 'next_date', 'similarity', 'description', "img", "url"],
+            'products': ['id', 'product_id', 'product_name', 'product_type', 'similarity', 'description', "img", "url"],
         }
     }
 

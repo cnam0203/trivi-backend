@@ -6,7 +6,25 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .serializers import UserSerializer, UserSerializerWithToken
 
+import json
 
+
+@api_view(['POST'])
+def change_password(request):
+    try:
+        request_body = json.loads(request.body)
+        user_name = request_body['userName']
+        new_password = request_body['confirmedPassword']
+        u = User.objects.get(username=user_name)
+        u.set_password(new_password)
+        u.save()
+        print("hello")
+        return Response({})
+        
+    except Exception as error:
+        print(error)
+        return Response({'message': "Change password failed"})
+    
 @api_view(['GET'])
 def current_user(request):
     """
