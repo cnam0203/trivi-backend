@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 import environ
 import pymysql
+import os
 
 # Database connection
 pymysql.install_as_MySQLdb()
@@ -80,6 +81,7 @@ CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',
     'http://3.129.66.167',
     'http://new.dimalab.ca',
+    'null',
 ]
 
 ROOT_URLCONF = 'recommender.urls'
@@ -160,7 +162,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
