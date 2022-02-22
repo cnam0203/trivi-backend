@@ -11,6 +11,7 @@ from .serializers import *
 from .models import *
 from .content_based_recommender import ContentBasedRecommender
 from .utils import *
+from pathlib import Path
 
 import random
 import json
@@ -18,17 +19,22 @@ import uuid
 import os
 import pydash
 import urllib3
-
-# Global varial
-API_KEY = "culturemauricie2022"
-IP_DOMAIN = "http://localhost:8000"
+import environ
 
 # Read configure file
+base_dir = Path(__file__).resolve().parent.parent
 module_dir = os.path.dirname(__file__)
 mapping_template_file_path = os.path.join(module_dir, 'configuration/mapping_template.json')
 schema_table_file_path = os.path.join(module_dir, 'configuration/schema_table.json')
 schema_detail_file_path = os.path.join(module_dir, 'configuration/schema_detail.json')
 
+# Initialise environment variables
+env = environ.Env()
+environ.Env.read_env(os.path.join(base_dir, '.env'))
+
+# Global varial
+API_KEY = env('API_KEY')
+IP_DOMAIN = env('IP_DOMAIN')
 
 @api_view(['GET'])
 def home(request):
@@ -887,12 +893,29 @@ def get_list_recommend(request):
             domain = request.GET.get('domain', None)
             item_id = request.GET.get('itemId', None)
             list_recommend_items = get_recommend_items(level, item_type, recommend_type, quantity, domain, item_id)
-            return Response({'items': list_recommend_items}, status=status.HTTP_200_OK)
+            return Response({'itemType': item_type, 'recommendType': recommend_type, 'items': list_recommend_items}, status=status.HTTP_200_OK)
         else:
             return Response({'message': 'Authorization failed'}, status=status.HTTP_401_UNAUTHORIZED)
     except Exception as error:
         return Response({'message': error})
 
+def get_embedded_link(api):
+    css_link = '<link rel="stylesheet" href="' + IP_DOMAIN + '/static/dimadb/css/recommender.css">'
+    div_link = '<div id="' + 'recommendItem' + '"></div>'
+    js_link = '<script src="' + IP_DOMAIN + '/static/dimadb/js/recommender.js' + '"></script>'
+    recommend_link = '<script>' + '\n'
+    recommend_link += '\tconst recommendItems = getRecommend("' + api + '", "' + API_KEY + '");' + '\n'
+    recommend_link += '\trecommendItems.then(res => {' + '\n'
+    recommend_link += '\t\t//Handle recommend items here' + '\n'
+    recommend_link += '\t\t//Uncomment below code if we need to show view results' + '\n'
+    recommend_link += '\t\t//console.log(recommendItems);' + '\n'
+    recommend_link += '\t\t//Uncomment below code if we need to show recommendation UI' + '\n'
+    recommend_link += '\t\t//getListView("recommendItem", recommendItems);' + '\n'
+    recommend_link += '\t});' + '\n'
+    recommend_link += '</script>'
+    
+    embedded_link = css_link + '\n' + div_link + '\n' + js_link + '\n' + recommend_link
+    return embedded_link
 
 @api_view(['POST'])
 def get_recommend_api(request):
@@ -908,7 +931,8 @@ def get_recommend_api(request):
         #Get recommend api + recommend list
         api = generate_recommend_api(level, item_type, recommend_type, quantity, domain, item_id)
         list_recommend_items = get_recommend_items(level, item_type, recommend_type, quantity, domain, item_id)
-        return Response({'items': list_recommend_items, 'api': api, 'apiKey': API_KEY}, status=status.HTTP_200_OK)
+        embedded_link = get_embedded_link(api)
+        return Response({'items': list_recommend_items, 'api': api, 'apiKey': API_KEY, 'embeddedLink': embedded_link}, status=status.HTTP_200_OK)
     except Exception as error:
         return Response({'message': error})
 

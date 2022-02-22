@@ -14,16 +14,18 @@ from pathlib import Path
 import environ
 import pymysql
 import os
+import json
 
 # Database connection
 pymysql.install_as_MySQLdb()
 
-# Initialise environment variables
-env = environ.Env()
-environ.Env.read_env()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Initialise environment variables
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
 
 
 # Quick-start development settings - unsuitable for production
@@ -35,8 +37,7 @@ SECRET_KEY = 'django-insecure-1mjh2nz%@#%6vh2$0q&a&6jgap@-e(f7wne#sdgb6jn3x+%vp(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
-
+ALLOWED_HOSTS = json.loads(env('ALLOWED_HOSTS'))
 
 # Application definition
 
@@ -77,12 +78,7 @@ REST_FRAMEWORK = {
     ),
 }
 
-CORS_ORIGIN_WHITELIST = [
-    'http://localhost:3000',
-    'http://3.129.66.167',
-    'http://new.dimalab.ca',
-    'null',
-]
+CORS_ORIGIN_WHITELIST = json.loads(env('CORS_ORIGIN_WHITELIST'))
 
 ROOT_URLCONF = 'recommender.urls'
 
@@ -162,7 +158,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
